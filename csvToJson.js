@@ -1,20 +1,29 @@
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
+const mongoose = require('mongoose');
+const { Subject, Question } = require('./models');
 
 const csvDir = path.join(__dirname, 'csv_data');
-const outputDir = path.join(__dirname, 'seed_data');
 
-if (!fs.existsSync(outputDir)) {
-  fs.mkdirSync(outputDir);
-}
+mongoose.connect('mongodb://localhost:27017/quiz-maker', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+});
 
-fs.readdirSync(csvDir).forEach(file => {
-  if (path.extname(file) === '.csv') {
-    const results = [];
-    const subjectId = path.basename(file, '.csv');
-    let questionId = 1;
+async function importCsvToMongo(file) {
+  const subjectId = path.basename(file, '.csv');
+  let questionId = 1;
+  const questions = [];
 
+  // Upsert subject
+  await Subject.findOneAndUpdate(
+    { id: subjectId },
+    { id: subjectId, name: subjectId },
+    { upsert: true, new: true }
+  );
+
+  return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(csvDir, file))
       .pipe(csv())
       .on('data', (data) => {
@@ -28,12 +37,36 @@ fs.readdirSync(csvDir).forEach(file => {
           answer: data.answers,
           explanation: data.explanation || ''
         };
-        results.push(question);
+        questions.push(question);
       })
-      .on('end', () => {
-        const jsonOutput = JSON.stringify(results, null, 2);
-        fs.writeFileSync(path.join(outputDir, `${subjectId}.json`), jsonOutput);
-        console.log(`Transformed ${file} to JSON`);
-      });
+      .on('end', async () => {
+        try {
+          for (const question of questions) {
+            await Question.findOneAndUpdate(
+              { subjectId: question.subjectId, questionId: question.questionId },
+              question,
+              { upsert: true, new: true }
+            );
+          }
+          console.log(`Imported ${file} to MongoDB`);
+          resolve();
+        } catch (error) {
+          reject(error);
+        }
+      })
+      .on('error', reject);
+  });
+}
+
+async function importAllCsvFiles() {
+  const files = fs.readdirSync(csvDir).filter(file => path.extname(file) === '.csv');
+
+  for (const file of files) {
+    await importCsvToMongo(file);
   }
-});
+
+  mongoose.connection.close();
+  console.log('All CSV files imported to MongoDB');
+}
+
+importAllCsvFiles().catch(console.error);
