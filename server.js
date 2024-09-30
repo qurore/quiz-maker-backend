@@ -8,10 +8,7 @@ app.use(cors());
 app.use(express.json());
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/quiz-maker', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect('mongodb://localhost:27017/quiz-maker');
 
 // Define Schemas and Models
 const SubjectSchema = new mongoose.Schema({

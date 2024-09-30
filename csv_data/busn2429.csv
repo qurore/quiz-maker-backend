@@ -1,4 +1,4 @@
-﻿chapter,type,question,option_1,option_2,option_3,option_4,option_5,option_6,answers,explanation
+﻿chapter,questionType,question,option_1,option_2,option_3,option_4,option_5,option_6,answers,explanation
 1,MCQ,"Statistics is the mathematical science that deals with the collection, analysis, and presentation of data–data that can then be used as a basis for inference and induction.",TRUE,FALSE,,,,,1,
 1,MCQ,"Business statistics are statistics applied to the business world in an effort to improve people's decision making in fields such as marketing research, operations, finance, and advertising.",TRUE,FALSE,,,,,1,
 2,MCQ,_______ classes are classes with boundaries that do not overlap.,Equal-size,Open-ended,Mutually exclusive,Close-ended,,,3,

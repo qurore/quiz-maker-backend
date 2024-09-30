@@ -6,10 +6,7 @@ const { Subject, Question } = require('./models');
 
 const csvDir = path.join(__dirname, 'csv_data');
 
-mongoose.connect('mongodb://localhost:27017/quiz-maker', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-});
+mongoose.connect('mongodb://localhost:27017/quiz-maker');
 
 async function importCsvToMongo(file) {
   const subjectId = path.basename(file, '.csv');
@@ -31,7 +28,7 @@ async function importCsvToMongo(file) {
           subjectId,
           questionId: questionId++,
           chapter: data.chapter,
-          type: data.type,
+          questionType: data.questionType,
           questionText: data.question,
           options: [data.option_1, data.option_2, data.option_3, data.option_4, data.option_5, data.option_6].filter(Boolean),
           answer: data.answers,

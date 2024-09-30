@@ -9,7 +9,7 @@ const QuestionSchema = new mongoose.Schema({
   subjectId: { type: String, required: true },
   questionId: { type: Number, required: true },
   chapter: { type: String, required: true },
-  type: { type: String, enum: ['MCQ', 'FIB', 'SA'], required: true },
+  questionType: { type: String, enum: ['MCQ', 'FIB', 'SA'], required: true },
   questionText: { type: String, required: true },
   options: [String],
   answer: { type: String, required: true },
