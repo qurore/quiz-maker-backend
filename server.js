@@ -36,10 +36,17 @@ app.get('/api/subjects', async (req, res) => {
   res.json(subjects);
 });
 
-// Get questions by subject and optional chapter
+// Get chapters for a subject
+app.get('/api/subjects/:subjectId/chapters', async (req, res) => {
+  const { subjectId } = req.params;
+  const chapters = await Question.distinct('chapter', { subjectId });
+  res.json(chapters);
+});
+
+// Update the existing questions endpoint
 app.get('/api/questions', async (req, res) => {
   const { subjectId, chapter } = req.query;
-  let query = { subject: subjectId };
+  let query = { subjectId };
   if (chapter) query.chapter = chapter;
   const questions = await Question.find(query);
   res.json(questions);

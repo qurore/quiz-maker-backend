@@ -24,6 +24,7 @@ async function importCsvToMongo(file) {
     fs.createReadStream(path.join(csvDir, file))
       .pipe(csv())
       .on('data', (data) => {
+        console.log(data);
         const question = {
           subjectId,
           questionId: questionId++,
