@@ -16,17 +16,18 @@ async function importCsvToMongo(file) {
   // Upsert subject
   await Subject.findOneAndUpdate(
     { id: subjectId },
-    { id: subjectId, name: subjectId },
+    { id: subjectId, name: subjectId.toUpperCase() },
     { upsert: true, new: true }
   );
 
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(csvDir, file))
-      .pipe(csv())
+      .pipe(csv({
+        mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').trim()
+      }))
       .on('data', (data) => {
-        console.log(data);
         const question = {
-          subjectId,
+          subjectId: subjectId,
           questionId: questionId++,
           chapter: data.chapter,
           questionType: data.questionType,
