@@ -26,6 +26,15 @@ app.get('/api/subjects/:subjectId/chapters', async (req, res) => {
   res.json(chapters);
 });
 
+app.get('/api/subjects/:subjectId', async (req, res) => {
+  const { subjectId } = req.params;
+  const subject = await Subject.findOne({ id: subjectId });
+  if (!subject) {
+    return res.status(404).json({ error: 'Subject not found' });
+  }
+  res.json(subject);
+});
+
 // Update the existing questions endpoint
 app.get('/api/questions', async (req, res) => {
   const { subjectId, chapter } = req.query;
@@ -34,6 +43,7 @@ app.get('/api/questions', async (req, res) => {
   const questions = await Question.find(query);
   res.json(questions);
 });
+
 
 // Start the server
 const PORT = 5001;
