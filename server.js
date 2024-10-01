@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const { Subject, Question } = require('./models');
 
 // Create Express app
 const app = express();
@@ -9,24 +10,6 @@ app.use(express.json());
 
 // Connect to MongoDB
 mongoose.connect('mongodb://localhost:27017/quiz-maker');
-
-// Define Schemas and Models
-const SubjectSchema = new mongoose.Schema({
-  name: String,
-});
-
-const QuestionSchema = new mongoose.Schema({
-  subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject' },
-  chapter: String,
-  type: String, // 'MCQ' or 'FIB' (Fill in the Blank)
-  questionText: String,
-  options: [String], // For MCQ
-  answer: String,
-  explanation: String,
-});
-
-const Subject = mongoose.model('Subject', SubjectSchema);
-const Question = mongoose.model('Question', QuestionSchema);
 
 // API Endpoints
 

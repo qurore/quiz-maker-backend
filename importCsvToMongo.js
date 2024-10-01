@@ -26,14 +26,28 @@ async function importCsvToMongo(file) {
         mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').trim()
       }))
       .on('data', (data) => {
+        const options = {};
+        for (let i = 1; i <= 6; i++) {
+          if (data[`option_${i}`]) {
+            options[i - 1] = data[`option_${i}`];
+          }
+        }
+
+        let answer;
+        if (data.questionType === 'FIB') {
+          answer = [data.answers];
+        } else {
+          answer = data.answers.split(',').map(a => parseInt(a) - 1);
+        }
+
         const question = {
           subjectId: subjectId,
           questionId: questionId++,
           chapter: data.chapter,
           questionType: data.questionType,
           questionText: data.question,
-          options: [data.option_1, data.option_2, data.option_3, data.option_4, data.option_5, data.option_6].filter(Boolean),
-          answer: data.answers,
+          options: options,
+          answer: answer,
           explanation: data.explanation || ''
         };
         questions.push(question);
