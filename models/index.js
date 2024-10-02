@@ -37,10 +37,19 @@ const QuestionSchema = new mongoose.Schema({
   explanation: { type: String, required: true },
 });
 
+const IncorrectSchema = new mongoose.Schema({
+  subjectId: { type: String, required: true },
+  questionId: { type: Number, required: true },
+});
+
+// Add composite index for Incorrect schema
+IncorrectSchema.index({ subjectId: 1, questionId: 1}, { unique: true });
+
 // Add composite index
 QuestionSchema.index({ subjectId: 1, questionId: 1 }, { unique: true });
 
 const Subject = mongoose.model('Subject', SubjectSchema);
 const Question = mongoose.model('Question', QuestionSchema);
+const Incorrect = mongoose.model('Incorrect', IncorrectSchema);
 
-module.exports = { Subject, Question };
+module.exports = { Subject, Question, Incorrect };
