@@ -9,16 +9,9 @@ const csvDir = path.join(__dirname, 'csv_data');
 mongoose.connect('mongodb://localhost:27017/quiz-maker');
 
 async function importCsvToMongo(file) {
-  const subjectId = path.basename(file, '.csv');
   let questionId = 1;
   const questions = [];
-
-  // Upsert subject
-  await Subject.findOneAndUpdate(
-    { id: subjectId },
-    { id: subjectId, name: subjectId.toUpperCase() },
-    { upsert: true, new: true }
-  );
+  const subjects = new Set();
 
   return new Promise((resolve, reject) => {
     fs.createReadStream(path.join(csvDir, file))
@@ -26,18 +19,21 @@ async function importCsvToMongo(file) {
         mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').trim()
       }))
       .on('data', (data) => {
+        const subjectId = data.subject;
+        subjects.add(subjectId);
+
         const options = {};
         for (let i = 1; i <= 6; i++) {
-          if (data[`option_${i}`]) {
-            options[i - 1] = data[`option_${i}`];
+          if (data[`question_${i}`]) {
+            options[i - 1] = data[`question_${i}`];
           }
         }
 
         let answer;
         if (data.questionType === 'FIB') {
-          answer = [data.answers];
+          answer = [data.answer];
         } else {
-          answer = data.answers.split(',').map(a => parseInt(a) - 1);
+          answer = data.answer.split(',').map(a => parseInt(a) - 1);
         }
 
         const question = {
@@ -54,6 +50,16 @@ async function importCsvToMongo(file) {
       })
       .on('end', async () => {
         try {
+          // Upsert subjects
+          for (const subjectId of subjects) {
+            await Subject.findOneAndUpdate(
+              { id: subjectId },
+              { id: subjectId, name: subjectId.toUpperCase() },
+              { upsert: true, new: true }
+            );
+          }
+
+          // Upsert questions
           for (const question of questions) {
             await Question.findOneAndUpdate(
               { subjectId: question.subjectId, questionId: question.questionId },
