@@ -38,7 +38,10 @@ app.get('/api/subjects/:subjectId', async (req, res) => {
 app.get('/api/questions', async (req, res) => {
   const { subjectId, chapter } = req.query;
   let query = { subjectId };
-  if (chapter) query.chapter = chapter;
+  if (chapter) {
+    const chapters = chapter.split(',');
+    query.chapter = { $in: chapters };
+  }
   const questions = await Question.find(query);
   res.json(questions);
 });
@@ -61,13 +64,36 @@ app.post('/api/incorrects', async (req, res) => {
 // Get incorrect questions
 app.get('/api/incorrects', async (req, res) => {
   try {
-    const incorrects = await Incorrect.find();
+    const { subjectId, chapters } = req.query;
+    const chapterArray = chapters ? chapters.split(',') : [];
+    
+    let query = { subjectId };
+    if (chapterArray.length > 0) {
+      query.chapter = { $in: chapterArray };
+    }
+
+    const incorrects = await Incorrect.find(query);
+    if (incorrects.length === 0) {
+      return res.json([]);
+    }
+
     const incorrectQuestions = await Question.find({
       $or: incorrects.map(({ subjectId, questionId, chapter }) => ({ subjectId, questionId, chapter }))
     });
     res.json(incorrectQuestions);
   } catch (error) {
     res.status(500).json({ error: 'Error fetching incorrect questions' });
+  }
+});
+
+// Remove question from incorrects
+app.delete('/api/incorrects', async (req, res) => {
+  const { subjectId, questionId, chapter } = req.body;
+  try {
+    await Incorrect.findOneAndDelete({ subjectId, questionId, chapter });
+    res.status(200).json({ message: 'Question removed from incorrects successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error removing question from incorrects' });
   }
 });
 
