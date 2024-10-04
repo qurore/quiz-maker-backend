@@ -45,11 +45,11 @@ app.get('/api/questions', async (req, res) => {
 
 // Add incorrect question
 app.post('/api/incorrects', async (req, res) => {
-  const { subjectId, questionId } = req.body;
+  const { subjectId, questionId, chapter } = req.body;
   try {
     await Incorrect.findOneAndUpdate(
-      { subjectId, questionId },
-      { subjectId, questionId },
+      { subjectId, questionId, chapter },
+      { subjectId, questionId, chapter },
       { upsert: true, new: true }
     );
     res.status(200).json({ message: 'Incorrect question added successfully' });
@@ -63,7 +63,7 @@ app.get('/api/incorrects', async (req, res) => {
   try {
     const incorrects = await Incorrect.find();
     const incorrectQuestions = await Question.find({
-      $or: incorrects.map(({ subjectId, questionId }) => ({ subjectId, questionId }))
+      $or: incorrects.map(({ subjectId, questionId, chapter }) => ({ subjectId, questionId, chapter }))
     });
     res.json(incorrectQuestions);
   } catch (error) {

@@ -40,10 +40,12 @@ const QuestionSchema = new mongoose.Schema({
 const IncorrectSchema = new mongoose.Schema({
   subjectId: { type: String, required: true },
   questionId: { type: Number, required: true },
+  chapter: { type: String, required: true },
 });
 
 // Add composite index for Incorrect schema
 IncorrectSchema.index({ subjectId: 1, questionId: 1}, { unique: true });
+IncorrectSchema.index({ subjectId: 1, questionId: 1, chapter: 1 }, { unique: true });
 
 // Add composite index
 QuestionSchema.index({ subjectId: 1, questionId: 1 }, { unique: true });
