@@ -90,9 +90,14 @@ app.get('/api/incorrects', async (req, res) => {
 app.delete('/api/incorrects', async (req, res) => {
   const { subjectId, questionId, chapter } = req.body;
   try {
-    await Incorrect.findOneAndDelete({ subjectId, questionId, chapter });
-    res.status(200).json({ message: 'Question removed from incorrects successfully' });
+    const result = await Incorrect.findOneAndDelete({ subjectId, questionId, chapter });
+    if (result) {
+      res.status(200).json({ message: 'Question removed from incorrects successfully' });
+    } else {
+      res.status(404).json({ message: 'Question not found in incorrects' });
+    }
   } catch (error) {
+    console.error('Error removing question from incorrects:', error);
     res.status(500).json({ error: 'Error removing question from incorrects' });
   }
 });
