@@ -1,0 +1,15 @@
+chapter,type,question,option_1,option_2,option_3,option_4,option_5,option_6,answers,explanation
+1,MCQ,"Statistics is the mathematical science that deals with the collection, analysis, and presentation of data–data that can then be used as a basis for inference and induction.",True,False,,,,,1,"Freely write explanations in text format.
+This description will be shown in the quiz section in the app."
+1,MCQ,"Business statistics are statistics applied to the business world in an effort to improve people's decision making in fields such as marketing research, operations, finance, and advertising.",True,False,,,,,1,"Freely write explanations in text format.
+This description will be shown in the quiz section in the app."
+2,MCQ,_______ classes are classes with boundaries that do not overlap.,Equal-size,Open-ended,Mutually exclusive,Close-ended,,,3,"Freely write explanations in text format.
+This description will be shown in the quiz section in the app."
+2,MCQ,Bins in Excel represent the ___________.,lower boundary of each class in a frequency distribution,upper boundary of each class in a frequency distribution,width of each class in a frequency distribution,number of classes in a frequency distribution,,,2,"Freely write explanations in text format.
+This description will be shown in the quiz section in the app."
+3,MCQ,The range is a measure of central tendency.,True,False,,,,,2,"Freely write explanations in text format.
+This description will be shown in the quiz section in the app."
+3,MCQ,The mean of a data set is also known as the average value.,True,False,,,,,1,"Freely write explanations in text format.
+This description will be shown in the quiz section in the app."
+3,FIB,The ________ is the most commonly used measure of central tendency.,,,,,,,mean,"Freely write explanations in text format.
+This description will be shown in the quiz section in the app."
