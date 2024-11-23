@@ -2,6 +2,9 @@ const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
 const { Subject, Question, Incorrect } = require('./models');
+const csv = require('csv-parser');
+const fs = require('fs');
+const path = require('path');
 
 // Create Express app
 const app = express();
@@ -134,18 +137,64 @@ app.delete('/api/subjects/:id', async (req, res) => {
   }
 });
 
-// CSV upload endpoint
-const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
+// CSV processing function
+async function processCsvFile(filePath) {
+  let questionId = 1;
+  const questions = [];
+  const subjects = new Set();
 
-app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
+  return new Promise((resolve, reject) => {
+    fs.createReadStream(filePath)
+      .pipe(csv({
+        mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').trim()
+      }))
+      .on('data', (data) => {
+        // Validate required fields
+        const requiredFields = ['subject', 'chapter', 'questionType', 'question', 'answer'];
+        const missingFields = requiredFields.filter(field => !data[field]);
+        
+        if (missingFields.length > 0) {
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+
+        const subjectId = data.subject;
+        subjects.add(subjectId);
+
+        const options = {};
+        for (let i = 1; i <= 6; i++) {
+          if (data[`question_${i}`]) {
+            options[i - 1] = data[`question_${i}`];
+          }
+        }
+
+        const question = new Question({
+          id: questionId++,
+          subjectId: subjectId,
+          chapter: data.chapter,
+          questionType: data.questionType,
+          question: data.question,
+          answer: data.answer,
+          options: options
+        });
+        questions.push(question);
+      })
+      .on('end', () => {
+        resolve({ questions, subjects });
+      });
+  });
+}
+
+// CSV upload endpoint
+app.post('/api/upload-csv', async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: 'No file uploaded' });
+    if (!req.body.filePath) {
+      return res.status(400).json({ error: 'No file path provided' });
     }
-    // Process the CSV file here
-    // You can use your existing CSV import logic
-    res.json({ message: 'File uploaded successfully' });
+    const filePath = req.body.filePath;
+    const { questions, subjects } = await processCsvFile(filePath);
+    await Subject.insertMany(Array.from(subjects));
+    await Question.insertMany(questions);
+    res.json({ message: 'File processed successfully' });
   } catch (error) {
     res.status(500).json({ error: 'Error processing file' });
   }
