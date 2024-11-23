@@ -102,6 +102,55 @@ app.delete('/api/incorrects', async (req, res) => {
   }
 });
 
+// Update subject
+app.put('/api/subjects/:id', async (req, res) => {
+  try {
+    const subject = await Subject.findOneAndUpdate(
+      { id: req.params.id },
+      { name: req.body.name },
+      { new: true }
+    );
+    if (!subject) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+    res.json(subject);
+  } catch (error) {
+    res.status(500).json({ error: 'Error updating subject' });
+  }
+});
+
+// Delete subject
+app.delete('/api/subjects/:id', async (req, res) => {
+  try {
+    const subject = await Subject.findOneAndDelete({ id: req.params.id });
+    if (!subject) {
+      return res.status(404).json({ error: 'Subject not found' });
+    }
+    // Also delete related questions
+    await Question.deleteMany({ subjectId: req.params.id });
+    res.json({ message: 'Subject deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error deleting subject' });
+  }
+});
+
+// CSV upload endpoint
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
+
+app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
+    }
+    // Process the CSV file here
+    // You can use your existing CSV import logic
+    res.json({ message: 'File uploaded successfully' });
+  } catch (error) {
+    res.status(500).json({ error: 'Error processing file' });
+  }
+});
+
 // Start the server
 const PORT = 5001;
 app.listen(PORT, () => {
