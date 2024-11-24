@@ -43,3 +43,6 @@ Thumbs.db
 # CSV files
 csv_data/
 seed_data/
+
+# Uploads directory
+uploads/

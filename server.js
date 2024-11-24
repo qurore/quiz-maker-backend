@@ -4,7 +4,10 @@ const cors = require('cors');
 const { Subject, Question, Incorrect } = require('./models');
 const csv = require('csv-parser');
 const fs = require('fs');
+const fsPromises = require('fs').promises;
 const path = require('path');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 // Create Express app
 const app = express();
@@ -146,57 +149,142 @@ async function processCsvFile(filePath) {
   return new Promise((resolve, reject) => {
     fs.createReadStream(filePath)
       .pipe(csv({
-        mapHeaders: ({ header }) => header.replace(/^\uFEFF/, '').trim()
+        mapHeaders: ({ header }) => {
+          if (!header) return header;
+          return header
+            .replace(/^\uFEFF/, '')
+            .toLowerCase()
+            .trim();
+        }
       }))
       .on('data', (data) => {
-        // Validate required fields
-        const requiredFields = ['subject', 'chapter', 'questionType', 'question', 'answer'];
-        const missingFields = requiredFields.filter(field => !data[field]);
-        
-        if (missingFields.length > 0) {
-          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-        }
+        try {
+          const normalizedData = Object.keys(data).reduce((acc, key) => {
+            acc[key.toLowerCase()] = data[key];
+            return acc;
+          }, {});
 
-        const subjectId = data.subject;
-        subjects.add(subjectId);
-
-        const options = {};
-        for (let i = 1; i <= 6; i++) {
-          if (data[`question_${i}`]) {
-            options[i - 1] = data[`question_${i}`];
+          const requiredFields = ['subject', 'chapter', 'questiontype', 'question', 'answer'];
+          const missingFields = requiredFields.filter(field => 
+            !normalizedData[field] || normalizedData[field].trim() === ''
+          );
+          
+          if (missingFields.length > 0) {
+            console.warn('Row data:', normalizedData);
+            throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
           }
-        }
 
-        const question = new Question({
-          id: questionId++,
-          subjectId: subjectId,
-          chapter: data.chapter,
-          questionType: data.questionType,
-          question: data.question,
-          answer: data.answer,
-          options: options
-        });
-        questions.push(question);
+          const subjectId = normalizedData.subject.trim();
+          subjects.add(subjectId);
+
+          const options = {};
+          for (let i = 1; i <= 6; i++) {
+            const optionKey = `question_${i}`;
+            if (normalizedData[optionKey] && normalizedData[optionKey].trim() !== '') {
+              options[i - 1] = normalizedData[optionKey].trim();
+            }
+          }
+
+          questions.push({
+            id: questionId++,
+            subjectId: subjectId,
+            chapter: normalizedData.chapter.trim(),
+            questionType: normalizedData.questiontype.trim().toUpperCase(),
+            question: normalizedData.question.trim(),
+            answer: normalizedData.answer.trim(),
+            options: options,
+            explanation: (normalizedData.explanation || '').trim()
+          });
+        } catch (error) {
+          console.error('Error processing row:', error);
+          console.error('Row data:', data);
+          reject(error);
+        }
       })
       .on('end', () => {
-        resolve({ questions, subjects });
+        if (questions.length === 0) {
+          reject(new Error('No valid questions found in CSV file'));
+        } else {
+          resolve({ questions, subjects });
+        }
+      })
+      .on('error', (error) => {
+        console.error('CSV parsing error:', error);
+        reject(error);
       });
   });
 }
 
 // CSV upload endpoint
-app.post('/api/upload-csv', async (req, res) => {
+app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
   try {
-    if (!req.body.filePath) {
-      return res.status(400).json({ error: 'No file path provided' });
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded' });
     }
-    const filePath = req.body.filePath;
-    const { questions, subjects } = await processCsvFile(filePath);
-    await Subject.insertMany(Array.from(subjects));
-    await Question.insertMany(questions);
-    res.json({ message: 'File processed successfully' });
+
+    const filePath = req.file.path;
+    
+    try {
+      const { questions, subjects } = await processCsvFile(filePath);
+      console.log(`Processing ${questions.length} questions for ${subjects.size} subjects`);
+
+      // Insert subjects
+      for (const subjectId of subjects) {
+        await Subject.findOneAndUpdate(
+          { id: subjectId },
+          { id: subjectId, name: subjectId.toUpperCase() },
+          { upsert: true }
+        );
+      }
+
+      // Insert questions
+      for (const question of questions) {
+        const questionData = {
+          subjectId: question.subjectId,
+          questionId: question.id,
+          chapter: question.chapter,
+          questionType: question.questionType,
+          questionText: question.question,
+          options: question.options,
+          answer: question.questionType === 'FIB' 
+            ? [question.answer] 
+            : question.answer.split(',').map(a => parseInt(a.trim()) - 1),
+          explanation: question.explanation
+        };
+
+        await Question.findOneAndUpdate(
+          { subjectId: questionData.subjectId, questionId: questionData.questionId },
+          questionData,
+          { upsert: true }
+        );
+      }
+
+      // Clean up
+      await fsPromises.unlink(filePath);
+
+      res.json({ 
+        message: 'File processed successfully',
+        stats: {
+          questionsProcessed: questions.length,
+          subjectsProcessed: subjects.size
+        }
+      });
+    } catch (error) {
+      // ファイルの後処理
+      try {
+        await fsPromises.unlink(filePath);
+      } catch (unlinkError) {
+        console.error('Error deleting file:', unlinkError);
+      }
+      throw error;
+    }
   } catch (error) {
-    res.status(500).json({ error: 'Error processing file' });
+    console.error('Error processing CSV:', error);
+    res.status(500).json({ 
+      error: 'Error processing file',
+      message: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
 
