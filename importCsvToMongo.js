@@ -1,3 +1,4 @@
+require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 const csv = require('csv-parser');
@@ -27,8 +28,8 @@ async function importCsvToMongo(file) {
 
         const options = {};
         for (let i = 1; i <= 6; i++) {
-          if (data[`question_${i}`]) {
-            options[i - 1] = data[`question_${i}`];
+          if (data[`option_${i}`]) {
+            options[i - 1] = data[`option_${i}`];
           }
         }
 
