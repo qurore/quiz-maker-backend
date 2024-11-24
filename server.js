@@ -186,12 +186,12 @@ const processCsvFile = async (filePath) => {
       }))
       .on('data', (data) => {
         try {
-          // データの正規化
+          // Data normalization
           const normalizedData = Object.keys(data).reduce((acc, key) => {
             let value = data[key];
             let normalizedKey = key.toLowerCase();
 
-            // キーの正規化
+            // Key normalization
             switch (normalizedKey) {
               case 'type':
                 normalizedKey = 'questiontype';
@@ -208,13 +208,13 @@ const processCsvFile = async (filePath) => {
             return acc;
           }, {});
 
-          // subjectが無い場合はファイル名から推測
+          // If subject is missing, infer from filename
           if (!normalizedData.subject) {
             const fileName = path.basename(filePath, '.csv');
             normalizedData.subject = fileName.split('_')[0].toUpperCase();
           }
 
-          // answersフィールドの値をanswerフィールドにコピー
+          // Copy answers field value to answer field
           if (!normalizedData.answer && normalizedData.answers) {
             normalizedData.answer = normalizedData.answers;
           }
@@ -228,7 +228,7 @@ const processCsvFile = async (filePath) => {
             throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
           }
 
-          // questionTypeのデフォルト値設定
+          // Set default value for questionType
           if (!normalizedData.questiontype) {
             normalizedData.questiontype = 'MCQ';
           }
@@ -244,7 +244,7 @@ const processCsvFile = async (filePath) => {
             }
           }
 
-          // answerの処理
+          // answer processing
           const answer = normalizedData.answer || normalizedData.answers || '1';
 
           questions.push({
@@ -260,7 +260,7 @@ const processCsvFile = async (filePath) => {
         } catch (error) {
           console.error('Error processing row:', error);
           console.error('Row data:', data);
-          // エラーをスキップして続行
+          // Skip error and continue
           console.warn('Skipping row due to error');
         }
       })
@@ -361,11 +361,11 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
 // Get review statistics
 app.get('/api/review-stats', async (req, res) => {
   try {
-    // 総問題数と不正解数の取得
+    // Get total questions and incorrect count
     const totalQuestions = await Question.countDocuments();
     const totalIncorrect = await Incorrect.countDocuments();
 
-    // 科目ごとの統計
+    // Subject statistics
     const subjectStats = await Question.aggregate([
       {
         $group: {
@@ -375,7 +375,7 @@ app.get('/api/review-stats', async (req, res) => {
       }
     ]);
 
-    // 各科目の不正解数を取得
+    // Get incorrect count for each subject
     const subjectIncorrects = await Incorrect.aggregate([
       {
         $group: {
@@ -385,7 +385,7 @@ app.get('/api/review-stats', async (req, res) => {
       }
     ]);
 
-    // チャプターごとの統計
+    // Chapter statistics
     const chapterStats = await Question.aggregate([
       {
         $group: {
@@ -395,7 +395,7 @@ app.get('/api/review-stats', async (req, res) => {
       }
     ]);
 
-    // チャプターごとの不正解数
+    // Chapter incorrect count
     const chapterIncorrects = await Incorrect.aggregate([
       {
         $group: {
