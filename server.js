@@ -8,6 +8,7 @@ const fsPromises = require('fs').promises;
 const path = require('path');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
+const axios = require('axios');
 
 // Create Express app
 const app = express();
@@ -427,6 +428,36 @@ app.get('/api/review-stats', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Error fetching review statistics' });
+  }
+});
+
+// Dictionary API endpoint
+app.get('/api/dictionary/:word', async (req, res) => {
+  const { word } = req.params;
+  const DICTIONARY_API_BASE_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en';
+
+  try {
+    const response = await axios.get(`${DICTIONARY_API_BASE_URL}/${word}`);
+    const processedData = {
+      word: word,
+      meanings: response.data[0].meanings.map(meaning => ({
+        partOfSpeech: meaning.partOfSpeech,
+        definitions: meaning.definitions.map(def => ({
+          definition: def.definition,
+          example: def.example || null
+        }))
+      })),
+      phonetic: response.data[0].phonetic || null
+    };
+    
+    res.json(processedData);
+  } catch (error) {
+    if (error.response?.status === 404) {
+      res.status(404).json({ error: 'Word not found' });
+    } else {
+      console.error('Dictionary API error:', error);
+      res.status(500).json({ error: 'Failed to fetch word definition' });
+    }
   }
 });
 
