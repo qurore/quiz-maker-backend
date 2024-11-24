@@ -1,3 +1,4 @@
+require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -15,7 +16,9 @@ app.use(cors());
 app.use(express.json());
 
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/quiz-maker');
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB Atlas'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 // API Endpoints
 // Get all subjects

@@ -46,3 +46,6 @@ seed_data/
 
 # Uploads directory
 uploads/
+
+# Environment variables
+.env

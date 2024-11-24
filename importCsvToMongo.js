@@ -6,7 +6,10 @@ const { Subject, Question } = require('./models');
 
 const csvDir = path.join(__dirname, 'csv_data');
 
-mongoose.connect('mongodb://localhost:27017/quiz-maker');
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI)
+  .then(() => console.log('Connected to MongoDB Atlas'))
+  .catch(err => console.error('MongoDB connection error:', err));
 
 async function importCsvToMongo(file) {
   let questionId = 1;
