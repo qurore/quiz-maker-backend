@@ -141,7 +141,7 @@ app.delete('/api/subjects/:id', async (req, res) => {
 });
 
 // CSV processing function
-async function processCsvFile(filePath) {
+const processCsvFile = async (filePath) => {
   let questionId = 1;
   const questions = [];
   const subjects = new Set();
@@ -154,24 +154,57 @@ async function processCsvFile(filePath) {
           return header
             .replace(/^\uFEFF/, '')
             .toLowerCase()
-            .trim();
+            .trim()
+            .replace(/\s+/g, '_');
         }
       }))
       .on('data', (data) => {
         try {
+          // データの正規化
           const normalizedData = Object.keys(data).reduce((acc, key) => {
-            acc[key.toLowerCase()] = data[key];
+            let value = data[key];
+            let normalizedKey = key.toLowerCase();
+
+            // キーの正規化
+            switch (normalizedKey) {
+              case 'type':
+                normalizedKey = 'questiontype';
+                break;
+              case 'answers':
+                normalizedKey = 'answer';
+                break;
+              case 'subject_id':
+                normalizedKey = 'subject';
+                break;
+            }
+
+            acc[normalizedKey] = value;
             return acc;
           }, {});
 
-          const requiredFields = ['subject', 'chapter', 'questiontype', 'question', 'answer'];
+          // subjectが無い場合はファイル名から推測
+          if (!normalizedData.subject) {
+            const fileName = path.basename(filePath, '.csv');
+            normalizedData.subject = fileName.split('_')[0].toUpperCase();
+          }
+
+          // answersフィールドの値をanswerフィールドにコピー
+          if (!normalizedData.answer && normalizedData.answers) {
+            normalizedData.answer = normalizedData.answers;
+          }
+
+          const requiredFields = ['subject', 'chapter', 'question'];
           const missingFields = requiredFields.filter(field => 
             !normalizedData[field] || normalizedData[field].trim() === ''
           );
           
           if (missingFields.length > 0) {
-            console.warn('Row data:', normalizedData);
             throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+          }
+
+          // questionTypeのデフォルト値設定
+          if (!normalizedData.questiontype) {
+            normalizedData.questiontype = 'MCQ';
           }
 
           const subjectId = normalizedData.subject.trim();
@@ -179,11 +212,14 @@ async function processCsvFile(filePath) {
 
           const options = {};
           for (let i = 1; i <= 6; i++) {
-            const optionKey = `question_${i}`;
+            const optionKey = `option_${i}`;
             if (normalizedData[optionKey] && normalizedData[optionKey].trim() !== '') {
               options[i - 1] = normalizedData[optionKey].trim();
             }
           }
+
+          // answerの処理
+          const answer = normalizedData.answer || normalizedData.answers || '1';
 
           questions.push({
             id: questionId++,
@@ -191,14 +227,15 @@ async function processCsvFile(filePath) {
             chapter: normalizedData.chapter.trim(),
             questionType: normalizedData.questiontype.trim().toUpperCase(),
             question: normalizedData.question.trim(),
-            answer: normalizedData.answer.trim(),
+            answer: answer,
             options: options,
             explanation: (normalizedData.explanation || '').trim()
           });
         } catch (error) {
           console.error('Error processing row:', error);
           console.error('Row data:', data);
-          reject(error);
+          // エラーをスキップして続行
+          console.warn('Skipping row due to error');
         }
       })
       .on('end', () => {
@@ -213,7 +250,7 @@ async function processCsvFile(filePath) {
         reject(error);
       });
   });
-}
+};
 
 // CSV upload endpoint
 app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
