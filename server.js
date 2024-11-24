@@ -361,21 +361,28 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
 // Get review statistics
 app.get('/api/review-stats', async (req, res) => {
   try {
-    // Get total questions and incorrect count
     const totalQuestions = await Question.countDocuments();
     const totalIncorrect = await Incorrect.countDocuments();
 
-    // Subject statistics
+    // Subject statistics with names
     const subjectStats = await Question.aggregate([
+      {
+        $lookup: {
+          from: 'subjects',
+          localField: 'subjectId',
+          foreignField: 'id',
+          as: 'subject'
+        }
+      },
       {
         $group: {
           _id: '$subjectId',
+          subjectName: { $first: { $arrayElemAt: ['$subject.name', 0] } },
           totalQuestions: { $sum: 1 }
         }
       }
     ]);
 
-    // Get incorrect count for each subject
     const subjectIncorrects = await Incorrect.aggregate([
       {
         $group: {
@@ -413,6 +420,7 @@ app.get('/api/review-stats', async (req, res) => {
       },
       bySubject: subjectStats.map(subject => ({
         subjectId: subject._id,
+        subjectName: subject.subjectName,
         total: subject.totalQuestions,
         incorrect: subjectIncorrects.find(inc => inc._id === subject._id)?.incorrectCount || 0
       })),
