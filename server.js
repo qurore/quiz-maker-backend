@@ -424,14 +424,18 @@ app.get('/api/review-stats', async (req, res) => {
         total: subject.totalQuestions,
         incorrect: subjectIncorrects.find(inc => inc._id === subject._id)?.incorrectCount || 0
       })),
-      byChapter: chapterStats.map(chapter => ({
-        subjectId: chapter._id.subject,
-        chapter: chapter._id.chapter,
-        total: chapter.totalQuestions,
-        incorrect: chapterIncorrects.find(
-          inc => inc._id.subject === chapter._id.subject && inc._id.chapter === chapter._id.chapter
-        )?.incorrectCount || 0
-      }))
+      byChapter: chapterStats.map(chapter => {
+        const subject = subjectStats.find(s => s._id === chapter._id.subject);
+        return {
+          subjectId: chapter._id.subject,
+          subjectName: subject?.subjectName,
+          chapter: chapter._id.chapter,
+          total: chapter.totalQuestions,
+          incorrect: chapterIncorrects.find(
+            inc => inc._id.subject === chapter._id.subject && inc._id.chapter === chapter._id.chapter
+          )?.incorrectCount || 0
+        };
+      })
     });
   } catch (error) {
     res.status(500).json({ error: 'Error fetching review statistics' });
