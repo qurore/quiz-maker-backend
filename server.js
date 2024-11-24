@@ -458,7 +458,10 @@ app.get('/api/wikipedia/:word', async (req, res) => {
     const page = pages[pageId];
 
     if (pageId === '-1') {
-      return res.status(404).json({ error: 'Term not found' });
+      return res.status(404).json({ 
+        status: 'not_found',
+        message: 'No Wikipedia entry found for this term' 
+      });
     }
 
     const processedData = {
