@@ -265,8 +265,15 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
       const { questions, subjects } = await processCsvFile(filePath);
       console.log(`Processing ${questions.length} questions for ${subjects.size} subjects`);
 
-      // Insert subjects
+      // For each subject in the CSV
       for (const subjectId of subjects) {
+        // Delete existing questions and incorrects for this subject
+        await Promise.all([
+          Question.deleteMany({ subjectId }),
+          Incorrect.deleteMany({ subjectId })
+        ]);
+
+        // Then update/insert the subject
         await Subject.findOneAndUpdate(
           { id: subjectId },
           { id: subjectId, name: subjectId.toUpperCase() },
@@ -274,7 +281,7 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
         );
       }
 
-      // Insert questions
+      // Insert new questions
       for (const question of questions) {
         const questionData = {
           subjectId: question.subjectId,
@@ -307,7 +314,7 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
         }
       });
     } catch (error) {
-      // ファイルの後処理
+      // post process
       try {
         await fsPromises.unlink(filePath);
       } catch (unlinkError) {
