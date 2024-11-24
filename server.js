@@ -358,6 +358,78 @@ app.post('/api/upload-csv', upload.single('file'), async (req, res) => {
   }
 });
 
+// Get review statistics
+app.get('/api/review-stats', async (req, res) => {
+  try {
+    // 総問題数と不正解数の取得
+    const totalQuestions = await Question.countDocuments();
+    const totalIncorrect = await Incorrect.countDocuments();
+
+    // 科目ごとの統計
+    const subjectStats = await Question.aggregate([
+      {
+        $group: {
+          _id: '$subjectId',
+          totalQuestions: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // 各科目の不正解数を取得
+    const subjectIncorrects = await Incorrect.aggregate([
+      {
+        $group: {
+          _id: '$subjectId',
+          incorrectCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // チャプターごとの統計
+    const chapterStats = await Question.aggregate([
+      {
+        $group: {
+          _id: { subject: '$subjectId', chapter: '$chapter' },
+          totalQuestions: { $sum: 1 }
+        }
+      }
+    ]);
+
+    // チャプターごとの不正解数
+    const chapterIncorrects = await Incorrect.aggregate([
+      {
+        $group: {
+          _id: { subject: '$subjectId', chapter: '$chapter' },
+          incorrectCount: { $sum: 1 }
+        }
+      }
+    ]);
+
+    res.json({
+      overall: {
+        total: totalQuestions,
+        incorrect: totalIncorrect,
+        ratio: totalIncorrect / totalQuestions
+      },
+      bySubject: subjectStats.map(subject => ({
+        subjectId: subject._id,
+        total: subject.totalQuestions,
+        incorrect: subjectIncorrects.find(inc => inc._id === subject._id)?.incorrectCount || 0
+      })),
+      byChapter: chapterStats.map(chapter => ({
+        subjectId: chapter._id.subject,
+        chapter: chapter._id.chapter,
+        total: chapter.totalQuestions,
+        incorrect: chapterIncorrects.find(
+          inc => inc._id.subject === chapter._id.subject && inc._id.chapter === chapter._id.chapter
+        )?.incorrectCount || 0
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching review statistics' });
+  }
+});
+
 // Start the server
 const PORT = 5001;
 app.listen(PORT, () => {
