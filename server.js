@@ -20,15 +20,41 @@ mongoose.connect('mongodb://localhost:27017/quiz-maker');
 // API Endpoints
 // Get all subjects
 app.get('/api/subjects', async (req, res) => {
-  const subjects = await Subject.find();
-  res.json(subjects);
+  try {
+    const subjects = await Subject.find();
+    const subjectsWithCount = await Promise.all(
+      subjects.map(async (subject) => {
+        const count = await Question.countDocuments({ subjectId: subject.id });
+        return {
+          ...subject.toObject(),
+          questionCount: count
+        };
+      })
+    );
+    res.json(subjectsWithCount);
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching subjects' });
+  }
 });
 
 // Get chapters for a subject
 app.get('/api/subjects/:subjectId/chapters', async (req, res) => {
   const { subjectId } = req.params;
-  const chapters = await Question.distinct('chapter', { subjectId });
-  res.json(chapters);
+  try {
+    const chapters = await Question.aggregate([
+      { $match: { subjectId } },
+      {
+        $group: {
+          _id: '$chapter',
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+    res.json(chapters.map(c => ({ name: c._id, count: c.count })));
+  } catch (error) {
+    res.status(500).json({ error: 'Error fetching chapters' });
+  }
 });
 
 app.get('/api/subjects/:subjectId', async (req, res) => {
