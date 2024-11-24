@@ -8,7 +8,6 @@ const fsPromises = require('fs').promises;
 const path = require('path');
 const multer = require('multer');
 const upload = multer({ dest: 'uploads/' });
-const axios = require('axios');
 
 // Create Express app
 const app = express();
@@ -431,33 +430,48 @@ app.get('/api/review-stats', async (req, res) => {
   }
 });
 
-// Dictionary API endpoint
-app.get('/api/dictionary/:word', async (req, res) => {
+// Wikipedia API endpoint
+app.get('/api/wikipedia/:word', async (req, res) => {
   const { word } = req.params;
-  const DICTIONARY_API_BASE_URL = 'https://api.dictionaryapi.dev/api/v2/entries/en';
+  const WIKIPEDIA_API_URL = 'https://en.wikipedia.org/w/api.php';
 
   try {
-    const response = await axios.get(`${DICTIONARY_API_BASE_URL}/${word}`);
+    const params = new URLSearchParams({
+      action: 'query',
+      format: 'json',
+      prop: 'extracts',
+      exintro: 'true',
+      explaintext: 'true',
+      titles: word,
+      origin: '*'
+    });
+
+    const response = await fetch(`${WIKIPEDIA_API_URL}?${params}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    const data = await response.json();
+    
+    // Extract the page content
+    const pages = data.query.pages;
+    const pageId = Object.keys(pages)[0];
+    const page = pages[pageId];
+
+    if (pageId === '-1') {
+      return res.status(404).json({ error: 'Term not found' });
+    }
+
     const processedData = {
       word: word,
-      meanings: response.data[0].meanings.map(meaning => ({
-        partOfSpeech: meaning.partOfSpeech,
-        definitions: meaning.definitions.map(def => ({
-          definition: def.definition,
-          example: def.example || null
-        }))
-      })),
-      phonetic: response.data[0].phonetic || null
+      title: page.title,
+      extract: page.extract,
+      url: `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title)}`
     };
     
     res.json(processedData);
   } catch (error) {
-    if (error.response?.status === 404) {
-      res.status(404).json({ error: 'Word not found' });
-    } else {
-      console.error('Dictionary API error:', error);
-      res.status(500).json({ error: 'Failed to fetch word definition' });
-    }
+    console.error('Wikipedia API error:', error);
+    res.status(500).json({ error: 'Failed to fetch term definition' });
   }
 });
 
